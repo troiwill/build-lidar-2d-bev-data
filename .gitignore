@@ -1,0 +1,9 @@
+# Hidden files.
+.*
+
+# Tmp files or directories.
+tmp
+
+# Binary, build directory
+bin
+build
