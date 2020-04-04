@@ -53,7 +53,7 @@ void writeInfo(
     }
 
     // Write the information to the file.
-    infofile << "velofile,py,px,yaw,res\n";
+    infofile << "scanId,py,px,yaw,res\n";
     auto name_it = kVelonames.cbegin();
     auto tf_it = kTFs.cbegin();
     for (; name_it != kVelonames.cend(); ++name_it, ++tf_it)
