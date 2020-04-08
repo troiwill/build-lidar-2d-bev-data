@@ -1,6 +1,7 @@
 #include "bev2d_helpers.hpp"
 #include "transform_xyt.hpp"
 
+#include <cstdio>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -39,7 +40,7 @@ void writeScanInfo(
 {
     // Sanity check.
     assert(!kInfofilename.empty());
-    assert(kVelonames.size() == kTFs.size());
+    assert(kVelonames.size() == kTFs.size() && kTFs.size() > 0);
     assert(kMapImgSize.first > 0 && kMapImgSize.second > 0);
     assert(kResolution > 0.f);
 
@@ -52,16 +53,39 @@ void writeScanInfo(
     }
 
     // Write the information to the file.
-    infofile << "# scanId, cpy, cpx, yaw, res\n";
+    float accDistance = 0.f, delDistance = 0.f;
+    float prev_tf_x = kTFs[0].x, prev_tf_y = kTFs[0].y;
+    float tf_x = 0.f, tf_y = 0.f;
+    const int mapHeight = kMapImgSize.first, mapWidth = kMapImgSize.second;
+    const int kBufferSize = 150;
+    char infostr[kBufferSize];
+
+    snprintf(infostr, kBufferSize, "%10s, %6s, %6s, %10s, %6s, %12s, %12s\n",
+             "scanId", "cpy", "cpx", "yaw", "res", "delta_dist", "acc_dist");
+    infofile << infostr;
+    
     auto name_it = kVelonames.cbegin();
     auto tf_it = kTFs.cbegin();
     for (; name_it != kVelonames.cend(); ++name_it, ++tf_it)
     {
-        auto scanPxLoc = computePixelLoc(kMapImgSize.second, kMapImgSize.first, tf_it->x, tf_it->y,
-                                         kResolution);
+        tf_x = tf_it->x;
+        tf_y = tf_it->y;
+
+        // Compute the pixel location of this scan within the map.
+        auto scanPxLoc = computePixelLoc(mapHeight, mapWidth, tf_x, tf_y, kResolution);
         
-        infofile << *name_it   << "," << scanPxLoc[0] << "," << scanPxLoc[1] << ","
-                 << tf_it->yaw << "," << kResolution  << std::endl;
+        // Compute delta distance (between this scan and the previous) and accumulated distance.
+        delDistance = eucddist(prev_tf_x, prev_tf_y, tf_x, tf_y);
+        accDistance += delDistance;
+        
+        // Write info to disk.
+        snprintf(infostr, kBufferSize, "%10s, %6i, %6i, %10f, %6.3f, %12f, %12f\n",
+                 name_it->c_str(), scanPxLoc[0], scanPxLoc[1], tf_it->yaw, kResolution,
+                 delDistance, accDistance);
+        infofile << infostr;
+        
+        prev_tf_x = tf_x;
+        prev_tf_y = tf_y;
     }
     infofile.close();
 }

@@ -47,6 +47,12 @@ std::array<int, 2> computePixelLoc(
     };
 }
 
+template<typename T>
+inline T eucddist(const T& x0, const T& y0, const T& x1, const T& y1)
+{
+    return std::sqrt(std::pow(x0 - x1, 2) + std::pow(y0 - y1, 2));
+}
+
 template <typename PointT>
 void aggregatePointClouds(
     const std::vector<pcl::PointCloud<PointT>>& kIndivClouds,
@@ -69,8 +75,8 @@ RMatrixXui8 buildBEVFromCloud(
     assert(kXdiff > 0.f && kYdiff > 0.f && outRes > 0.f);
 
     // Compute the image size.
-    auto imgHeight = static_cast<int>(ceil(kXdiff / outRes)) + 1;
-    auto imgWidth = static_cast<int>(ceil(kYdiff / outRes)) + 1;
+    auto imgHeight = static_cast<int>(ceil(kXdiff / outRes));
+    auto imgWidth = static_cast<int>(ceil(kYdiff / outRes));
     
     // Create the bird's eye matrix (image) and iteratively fill the matrix.
     RMatrixXui8 bev = RMatrixXui8::Zero(imgHeight, imgWidth);

@@ -71,6 +71,17 @@ int main(int argc, char** argv)
         datedirs.push_back(date);
     }
     
+    float scanLenX = 0.f, scanLenY = 0.f;
+    if (radius > 0.f)
+    {
+        scanLenX = scanLenY = 2. * radius;
+    }
+    else
+    {
+        scanLenX = 2. * xlen;
+        scanLenY = 2. * ylen;
+    }
+    
     // Iterate over all Kitti date directories in 'datedirs'.
     for (auto dated : datedirs )
     {
@@ -137,9 +148,8 @@ int main(int argc, char** argv)
                     extractPointCloudROI(veloCloud, radius, veloCloudROI);
                 
                 auto roiDim = PointCloudDim2D::getMinMaxData2D(veloCloudROI);
-		        translateDataXY(veloCloudROI, roiDim.getCloudMinPt());
-                auto onlineBev = buildBEVFromCloud(veloCloudROI, roiDim.getCloudLenX(),
-                                                   roiDim.getCloudLenY(), res);
+		        translateDataXY(veloCloudROI, Eigen::Vector2f(-scanLenX / 2.f, -scanLenY / 2.f));
+                auto onlineBev = buildBEVFromCloud(veloCloudROI, scanLenX, scanLenY, res);
                 writeBGM((driveSavePath / (veloname + ".pgm")).string(), onlineBev);
                 
                 // Read in the OXTS data with the same LiDAR file name.
@@ -193,7 +203,7 @@ int main(int argc, char** argv)
             // Write the information file.
 	        std::cout << "\n   Writing info file..." << std::flush;
             writeScanInfo((driveSavePath / "info.txt").string(), velonames, xytTFs,
-                      std::make_pair(mapBev.rows(), mapBev.cols()), res);
+                          std::make_pair(mapBev.rows(), mapBev.cols()), res);
 	        std::cout << "Done!\n\n" << std::flush;
         }
     }
