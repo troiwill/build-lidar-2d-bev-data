@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Launching CMAKE."
-cmake .. -DCMAKE_INSTALL_PREFIX=../bin
+cmake ..
 
 echo "Building project."
-make -j && make install
+make -j
