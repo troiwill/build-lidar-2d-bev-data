@@ -30,18 +30,17 @@ void writeBGM(
     ofs.close();
 }
 
-void writeInfo(
+void writeScanInfo(
     const std::string& KInfofilename,
     const std::vector<std::string>& kVelonames,
     const std::vector<TransformXYTheta>& kTFs,
-    const std::size_t kMapImgHeight,
-    const std::size_t kMapImgWidth,
+    const std::pair<std::uint32_t, std::uint32_t>& kMapImgSize,
     const float kResolution)
 {
     // Sanity check.
     assert(!kInfofilename.empty());
     assert(kVelonames.size() == kTFs.size());
-    assert(kMapImgHeight > 0 && kMapImgWidth > 0);
+    assert(kMapImgSize.first > 0 && kMapImgSize.second > 0);
     assert(kResolution > 0.f);
 
     // Open the file.
@@ -53,16 +52,16 @@ void writeInfo(
     }
 
     // Write the information to the file.
-    infofile << "scanId,py,px,yaw,res\n";
+    infofile << "# scanId, cpy, cpx, yaw, res\n";
     auto name_it = kVelonames.cbegin();
     auto tf_it = kTFs.cbegin();
     for (; name_it != kVelonames.cend(); ++name_it, ++tf_it)
     {
-        auto scanPxLoc = computePixelLoc(kMapImgWidth, kMapImgHeight, tf_it->x, tf_it->y,
+        auto scanPxLoc = computePixelLoc(kMapImgSize.second, kMapImgSize.first, tf_it->x, tf_it->y,
                                          kResolution);
         
-        infofile << *name_it << "," << scanPxLoc[0] << "," << scanPxLoc[1] << ","
-                 << tf_it->yaw << "," << kResolution << std::endl;
+        infofile << *name_it   << "," << scanPxLoc[0] << "," << scanPxLoc[1] << ","
+                 << tf_it->yaw << "," << kResolution  << std::endl;
     }
     infofile.close();
 }

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
+#include <utility>
 
 #include <Eigen/Core>
 
@@ -23,9 +24,10 @@ typedef Eigen::Matrix<std::uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMa
 
 void writeBGM(const std::string& kSavePath, const RMatrixXui8& kMat);
 
-void writeInfo(const std::string& KInfofilename, const std::vector<std::string>& kVelonames,
-               const std::vector<TransformXYTheta>& kTFs, const std::size_t kMapImgHeight,
-               const std::size_t kMapImgWidth, const float kResolution);
+void writeScanInfo(const std::string& KInfofilename, const std::vector<std::string>& kVelonames,
+                   const std::vector<TransformXYTheta>& kTFs, 
+                   const std::pair<std::uint32_t, std::uint32_t>& kMapImgSize,
+                   const float kResolution);
 
 inline
 std::array<int, 2> computePixelLoc(

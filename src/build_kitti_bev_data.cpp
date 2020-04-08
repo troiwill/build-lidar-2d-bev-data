@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
-#include <tuple>
+#include <utility>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -192,8 +192,8 @@ int main(int argc, char** argv)
 
             // Write the information file.
 	        std::cout << "\n   Writing info file..." << std::flush;
-            writeInfo((driveSavePath / "info.txt").string(), velonames, xytTFs, mapBev.rows(),
-                      mapBev.cols(), res);
+            writeScanInfo((driveSavePath / "info.txt").string(), velonames, xytTFs,
+                      std::make_pair(mapBev.rows(), mapBev.cols()), res);
 	        std::cout << "Done!\n\n" << std::flush;
         }
     }
