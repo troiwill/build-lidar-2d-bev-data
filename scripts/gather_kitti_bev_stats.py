@@ -10,12 +10,13 @@ def main():
     parser.add_argument('kitti_bev_root', help='Root directory for Kitti BEV data.')
     args = parser.parse_args()
 
-    #
+    # Search for the Kitti BEV info files.
     print('Searching for Kitti BEV info files...', end='')
     bev_root = Path(args.kitti_bev_root)
     infofile_list = sorted([ str(p) for p in bev_root.glob('**/**/info.txt') ])
     print('Done! Found {} files.'.format(len(infofile_list)), end='\n\n')
 
+    # Iteratively process each info file.
     date_set = set()
     info_list = list()
     col_names = [ 'scanId', 'cpy', 'cpx', 'yaw', 'res', 'delta_dist', 'acc_dist' ]
@@ -35,6 +36,7 @@ def main():
         print('Progress ==> {:.2f}%\r'.format((i+1) / NB_FILES * 100.), end='')
     #end for
 
+    # Print the Kitti BEV data statistics.
     df = pandas.DataFrame(info_list, columns=[ 'date', 'drive', 'nb_scans', 'drive_dist' ])
     for datename in sorted(list(date_set)):
 
@@ -44,9 +46,9 @@ def main():
         nb_date_date = len(date_df)
 
         print('Accumulated Date Info: ' + datename)
-        print('  # of drives  -> {}'.format(nb_date_date))
-        print('  # of scans   -> {}'.format(acc_scans))
-        print('  acc distance -> {}'.format(acc_total_dist))
+        print('  # of drives  -> {:,}'.format(nb_date_date))
+        print('  # of scans   -> {:,}'.format(acc_scans))
+        print('  acc distance -> {:,.2f} m'.format(acc_total_dist))
         print('', end='\n\n')
     #end for
 #end def
