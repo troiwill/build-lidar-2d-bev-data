@@ -28,7 +28,7 @@ then
     then
         printf "Creating a conda environment for $ENV_NAME.\n"
         conda config --add channels anaconda
-        conda create -n $ENV_NAME python=3.6 && EXISTS=1
+        conda create -n $ENV_NAME python=3.8 && EXISTS=1
         printf "Once the environment is activated, run ''install_packages.sh''\n"
     fi
 else
