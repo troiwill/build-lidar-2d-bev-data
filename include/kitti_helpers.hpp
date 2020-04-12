@@ -51,6 +51,36 @@ struct KittiOxts_t
     }
 };
 
+struct KittiSequence_t
+{
+    KittiSequence_t(const std::string& kId, const std::string& kName, const std::uint32_t kStart,
+        const std::uint32_t kEnd, bool useSync)
+      : _id(kId),
+        _name(kName),
+        _start(kStart),
+        _end(kEnd)
+    {
+        if (useSync)
+            _name += "_sync";
+    }
+
+    const std::string& id() const { return this->_id; }
+    const std::string& name() const { return this->_name; }
+    int start() const { return this->_start; }
+    int end() const { return this->_end; }
+
+    static std::string to_string(const std::uint32_t& id)
+    {
+        std::ostringstream ss;
+        ss << std::setw(10) << std::setfill('0') << id;
+        return ss.str();
+    }
+
+private:
+    std::string _id, _name;
+    std::uint32_t _start, _end;
+};
+
 Eigen::Matrix4f computePoseFromOxts(
     const KittiOxts_t& oxts,
     const float scale);

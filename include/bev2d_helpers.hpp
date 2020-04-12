@@ -68,8 +68,7 @@ RMatrixXui8 buildBEVFromCloud(
     const float kXdiff,
     const float kYdiff,
     const float outRes,
-    bool useZvals = false,
-    float minZ = 0.f)
+    bool useIntensity)
 {
     // Sanity checks.
     assert(kXdiff > 0.f && kYdiff > 0.f && outRes > 0.f);
@@ -83,24 +82,25 @@ RMatrixXui8 buildBEVFromCloud(
     for (std::size_t i = 0; i < kCloud.size(); i++)
     {
         const PointT& pt = kCloud[i];
-        float pixelValue = 0.0f;
-        // max / min from zlen
-        if (useZvals)
-        {
-            //pixelValue = (pt.z - kMinPt.z) / (kMaxPt.z - kMinPt.z);
-            pixelValue = (pt.z + minZ) / (minZ * 2);
-        }
-        else
-        {
-            pixelValue = pt.intensity;
-        }
-        pixelValue = std::min(std::max(pixelValue * 255.0f, 0.0f), 255.0f);
+        std::uint8_t newPixelValue = 0;
 
         auto pxLoc = computePixelLoc(imgHeight, imgWidth, pt.x, pt.y, outRes);
         auto row = pxLoc[0];
         auto col = pxLoc[1];
+        std::uint8_t oldPixelValue = bev(row, col);
 
-        bev(row, col) = std::max(static_cast<std::uint8_t>(pixelValue), bev(row, col));
+        if (useIntensity)
+        {
+            newPixelValue = static_cast<std::uint8_t>(std::min(std::max(
+                pt.intensity * 255.0f, 0.0f), 255.0f));
+        }
+        else
+        {
+            newPixelValue = oldPixelValue;
+            if (oldPixelValue < 255)
+                newPixelValue += 1;
+        }
+        bev(row, col) = newPixelValue;
     }
     return bev;
 }
