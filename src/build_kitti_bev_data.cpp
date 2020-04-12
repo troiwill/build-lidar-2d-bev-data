@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 
     std::cout << "Builder parameters:\n";
     std::cout << "* Base directory: " << basedir << "\n* Save directory: " << savedir << std::endl;
-    std::cout << "* LiDAR BEV resolution: " << res << " meters";
+    std::cout << "* LiDAR BEV resolution: " << res << " meters\n";
     if (useInten)
         std::cout << "* Using LiDAR intensity values.\n";
 
@@ -99,6 +99,7 @@ int main(int argc, char** argv)
     for (const KittiSequence_t& kSeq : kKittiSeqs)
     {
         std::cout << "Processing Kitti sequence: " << kSeq.id() << " (" << kSeq.name() << ")\n";
+        std::cout <<     "Sequence should have " << (kSeq.end() - kSeq.start() + 1) << " scans.\n";
 
         std::string kittiDate = kSeq.name().substr(0, 10);
         boostfs::path drivepath(basepath / kittiDate / kSeq.name());
