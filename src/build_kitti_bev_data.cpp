@@ -44,16 +44,16 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
 
     // Launch threads to load the Velodyne data into memory.
     size_t kNumScans = kSeq.getNumScans();
-    vector<VelodyneData_t> velodata;
-    velodata.reserve(kNumScans);
+    data.reserve(kNumScans);
 
     for (size_t veloId = kSeq.start(), i = 1; veloId <= kSeq.end(); veloId++, i++)
     {
         string veloname = KittiSequence_t::to_string(veloId);    
-        cout << "Loading velodyne data... (name: " << veloname << ") - "
-             << static_cast<int>(100.0 * (i / kNumScans)) << "%\r" << flush;
+        printf("Loading velodyne data... (name: %s) - Progress -> %6.2f%\r", veloname.c_str(),
+	    static_cast<float>(100.0 * i / kNumScans));
+        cout << flush;
 
-        VelodyneData_t& currd = data[veloId];
+        VelodyneData_t currd;
 
         // Read in the Velodyne LiDAR file.
         string velofilename = veloname + ".bin";
@@ -73,6 +73,8 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
         currd.name() = veloname;
         currd.toWorldTf() = toWorldTF;
         currd.xytheta() = TransformXYTheta(toWorldTF(0,3), toWorldTF(1,3), oxts.yaw);
+
+	data.push_back(currd);
     }
     cout << "\nDone!\n\n" << flush;
 }
@@ -83,15 +85,18 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
     // Use threads to aggregate N consecutive point clouds for "each" scan.
     if (kNumScansToAgg > 1)
     {
+	cout << "Aggregating velodyne data to create point clouds. Each cloud contains "
+             << kNumScansToAgg << " scans.\n" << flush;
         size_t kAggcap = kSeq.getNumScans() - kNumScansToAgg + 1;
         aggVeloData.reserve(kAggcap);
         for (size_t i = 0, j = kNumScansToAgg - 1; i < kAggcap; i++, j++)
         {
             const VelodyneData_t& ind = kVelodata[j];
-            VelodyneData_t& outd = aggVeloData[i];
+            VelodyneData_t outd;
             
-            cout << "Aggregating velodyne data for name: " << ind.name() << " - "
-                 << static_cast<int>(100.0 * (i / kAggcap)) << "%\r" << flush;
+            printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%\r",
+                ind.name().c_str(), static_cast<float>(100.0 * i / kAggcap));
+	    cout << flush;
 
             for (size_t offset = 0; offset < kNumScansToAgg; offset++)
                 *(outd.scan()) += *(kVelodata[j - offset].scan());
@@ -99,11 +104,13 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
             outd.name() = ind.name();
             outd.toWorldTf() = ind.toWorldTf();
             outd.xytheta() = ind.xytheta();
+
+	    aggVeloData.push_back(outd);
         }
     }
     else
     {
-        cout << "Moving velodyne data." << flush;
+        cout << "Moving the data." << flush;
         aggVeloData = move(kVelodata);
     }
     cout << "\nDone!\n\nShifting scan coords using map min coords: (x = " << mapMinCoords[0]
@@ -120,13 +127,16 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
     const bool useInten, const boostfs::path& seqSavePath, Vector2f& mapMinCoords,
     array<uint32_t, 2>& imgSize)
 {
-    cout << "Aggregating point clouds to create map.";
+    cout << "Aggregating point clouds to create map.\n" << flush;
     size_t vdi = 1;
     PointCloud<PointXYZI> map;
+    map.points.reserve(kData.size());
     for (auto vd = kData.cbegin(); vd != kData.cend(); ++vd, ++vdi)
     {
         map += *(vd->scan());
-        cout << "Progress... " << vdi << " / " << kData.size() << "\r" << flush;
+        printf("Building drive map ... Progress -> %6.2f%\r",
+            static_cast<float>(100.0 * vdi / nData));
+	cout << flush;
     }
     cout << "\nAggregation complete!\n" << flush;
 
@@ -140,7 +150,7 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
     auto mapbev = buildBEVFromCloud(map, cloud2dInfo.getCloudLenX(),
         cloud2dInfo.getCloudLenY(), kRes, useInten);
     writeBGM((seqSavePath / "map.pgm").string(), mapbev);
-    cout << "Done!\n   Save path: " << seqSavePath.string() << flush;
+    cout << "Done!\nSave path: " << seqSavePath.string() << endl << endl << flush;
 
     // Set the image size (height, width).
     imgSize[0] = mapbev.rows();
