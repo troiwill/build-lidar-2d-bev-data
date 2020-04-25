@@ -5,7 +5,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
-find_package(OpenCV 4.2 REQUIRED)
+# find_package(OpenCV 4.2 REQUIRED)
 
 find_package(Boost 1.72.0 COMPONENTS program_options filesystem REQUIRED)
 set(Boost_USE_STATIC_LIBS OFF)
