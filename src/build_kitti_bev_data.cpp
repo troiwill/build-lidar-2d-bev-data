@@ -239,6 +239,7 @@ int main(int argc, char** argv)
 
     // Write the (aggregated) Velodyne data to disk.
     writeVelodyneData(seqSavePath, aggVeloData, imgSize[0], imgSize[1], res);
+    cout << "\nSequence " << kSeq.id() << " is complete!\n" << flush;
 
     exit(EXIT_SUCCESS);
 }

@@ -41,20 +41,26 @@ void bev2d::writeBGM(const string& kSavePath, const RMatrixXui8& kMat)
 void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>& kCloud)
 {
     // Open the file.
-    ofstream pcdf(kPcdSavePath);
+    fstream pcdf(kPcdSavePath, ios::out | ios::binary);
     if (!pcdf.good())
     {
         cerr << "Cannot open or create PCD binary file: " << kPcdSavePath << endl;
         exit(EXIT_FAILURE);
     }
     
+    float x, y, z, inten;
     for (auto p_it = kCloud.begin(); p_it != kCloud.end(); ++p_it)
     {
         auto p = *p_it;
-        pcdf << static_cast<float>(p.x);
-        pcdf << static_cast<float>(p.y);
-        pcdf << static_cast<float>(p.z);
-        pcdf << static_cast<float>(p.intensity);
+        x = static_cast<float>(p.x);
+        y = static_cast<float>(p.y);
+        z = static_cast<float>(p.z);
+        inten = static_cast<float>(p.intensity);
+        
+	pcdf.write((char*)&x, sizeof(float));
+        pcdf.write((char*)&y, sizeof(float));
+        pcdf.write((char*)&z, sizeof(float));
+        pcdf.write((char*)&inten, sizeof(float));
     }
     pcdf.close();
 }
