@@ -129,8 +129,9 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
 {
     cout << "Aggregating point clouds to create map.\n" << flush;
     size_t vdi = 1;
+    const size_t nData = kData.size();
     PointCloud<PointXYZI> map;
-    map.points.reserve(kData.size());
+    map.points.reserve(nData);
     for (auto vd = kData.cbegin(); vd != kData.cend(); ++vd, ++vdi)
     {
         map += *(vd->scan());
