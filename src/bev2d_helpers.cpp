@@ -1,62 +1,63 @@
 #include "bev2d_helpers.hpp"
 #include "transform_xyt.hpp"
+#include "velodyne_data.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <pcl/io/pcd_io.h>
 #include <string>
 #include <vector>
 
+namespace boostfs = boost::filesystem;
 
-void writeBGM(
-    const std::string& kSavePath,
-    const RMatrixXui8& kMat)
+using namespace bev2d;
+using namespace std;
+
+
+void bev2d::writeBGM(const string& kSavePath, const RMatrixXui8& kMat)
 {
     // Sanity checks.
     assert(!kSavePath.empty());
     assert(kMat.rows() > 0 && kMat.cols() > 0);
     
     // Open an output binary stream.
-    std::ofstream ofs(kSavePath);
+    ofstream ofs(kSavePath);
     if (!ofs.good())
     {
-        std::cerr << "Could not open the file path: " << kSavePath << std::endl;
+        cerr << "Could not open the file path: " << kSavePath << endl;
         exit(EXIT_FAILURE);
     }
 
     // Write the PGM file.
     ofs << "P5\n" << kMat.cols() << " " << kMat.rows() << "\n255\n";
     auto v = kMat.data();
-    for (std::size_t i = 0; i < kMat.size(); i++)
-        ofs << static_cast<std::uint8_t>(v[i]);
+    for (size_t i = 0; i < kMat.size(); i++)
+        ofs << static_cast<uint8_t>(v[i]);
     ofs.close();
 }
 
-void writeScanInfo(
-    const std::string& KInfofilename,
-    const std::vector<std::string>& kVelonames,
-    const std::vector<TransformXYTheta>& kTFs,
-    const std::pair<std::uint32_t, std::uint32_t>& kMapImgSize,
-    const float kResolution)
+void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
+    const uint32_t kMapImgHeight, const uint32_t kMapImgWidth, const float kRes)
 {
     // Sanity check.
-    assert(!kInfofilename.empty());
-    assert(kVelonames.size() == kTFs.size() && kTFs.size() > 0);
-    assert(kMapImgSize.first > 0 && kMapImgSize.second > 0);
-    assert(kResolution > 0.f);
+    assert(kData.size() > 0);
+    assert(kMapImgWidth > 0 && kMapImgHeight > 0);
+    assert(kRes > 0.f);
 
     // Open the file.
-    std::ofstream infofile(KInfofilename);
+    string infofilename((kSavePath / "info.txt").string());
+    ofstream infofile(infofilename);
     if (!infofile.good())
     {
-        std::cerr << "Cannot open or create info file: " << KInfofilename << std::endl;
+        cerr << "Cannot open or create info file: " << infofilename << endl;
         exit(EXIT_FAILURE);
     }
 
     // Write the information to the file.
     float accDistance = 0.f, delDistance = 0.f;
-    float prev_tf_x = kTFs[0].x, prev_tf_y = kTFs[0].y;
+    float prev_tf_x = kData[0].xytheta().x, prev_tf_y = kData[0].xytheta().y;
     float tf_x = 0.f, tf_y = 0.f;
-    const int mapHeight = kMapImgSize.first, mapWidth = kMapImgSize.second;
     const int kBufferSize = 150;
     char infostr[kBufferSize];
 
@@ -64,15 +65,19 @@ void writeScanInfo(
              "scanId", "cpy", "cpx", "yaw", "res", "delta_dist", "acc_dist");
     infofile << infostr;
     
-    auto name_it = kVelonames.cbegin();
-    auto tf_it = kTFs.cbegin();
-    for (; name_it != kVelonames.cend(); ++name_it, ++tf_it)
+    for (auto data_it = kData.cbegin(); data_it != kData.cend(); ++data_it)
     {
-        tf_x = tf_it->x;
-        tf_y = tf_it->y;
+        const VelodyneData_t& cdata = *data_it;
+        cout << "Progressing scan '" << cdata.name() << "'.\r";
+
+        // Write the PCD to disk.
+        pcl::io::savePCDFileASCII((kSavePath / cdata.name()).string() + ".pcd", *(cdata.scan()));
+        
+        tf_x = cdata.xytheta().x;
+        tf_y = cdata.xytheta().y;
 
         // Compute the pixel location of this scan within the map.
-        auto scanPxLoc = computePixelLoc(mapHeight, mapWidth, tf_x, tf_y, kResolution);
+        auto scanPxLoc = computePixelLoc(kMapImgHeight, kMapImgWidth, tf_x, tf_y, kRes);
         
         // Compute delta distance (between this scan and the previous) and accumulated distance.
         delDistance = eucddist(prev_tf_x, prev_tf_y, tf_x, tf_y);
@@ -80,7 +85,7 @@ void writeScanInfo(
         
         // Write info to disk.
         snprintf(infostr, kBufferSize, "%10s, %6i, %6i, %10f, %6.3f, %12f, %12f\n",
-                 name_it->c_str(), scanPxLoc[0], scanPxLoc[1], tf_it->yaw, kResolution,
+                 cdata.name().c_str(), scanPxLoc[0], scanPxLoc[1], cdata.xytheta().yaw, kRes,
                  delDistance, accDistance);
         infofile << infostr;
         
