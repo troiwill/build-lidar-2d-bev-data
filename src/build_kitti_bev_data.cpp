@@ -49,7 +49,7 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
     for (size_t veloId = kSeq.start(), i = 1; veloId <= kSeq.end(); veloId++, i++)
     {
         string veloname = KittiSequence_t::to_string(veloId);    
-        printf("Loading velodyne data... (name: %s) - Progress -> %6.2f%\r", veloname.c_str(),
+        printf("Loading velodyne data... (name: %s) - Progress -> %6.2f%%\r", veloname.c_str(),
 	    static_cast<float>(100.0 * i / kNumScans));
         cout << flush;
 
@@ -94,7 +94,7 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
             const VelodyneData_t& ind = kVelodata[j];
             VelodyneData_t outd;
             
-            printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%\r",
+            printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%%\r",
                 ind.name().c_str(), static_cast<float>(100.0 * i / kAggcap));
 	    cout << flush;
 
@@ -135,7 +135,7 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
     for (auto vd = kData.cbegin(); vd != kData.cend(); ++vd, ++vdi)
     {
         map += *(vd->scan());
-        printf("Building drive map ... Progress -> %6.2f%\r",
+        printf("Building drive map ... Progress -> %6.2f%%\r",
             static_cast<float>(100.0 * vdi / nData));
 	cout << flush;
     }

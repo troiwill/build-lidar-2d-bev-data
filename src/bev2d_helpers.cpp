@@ -12,6 +12,7 @@
 namespace boostfs = boost::filesystem;
 
 using namespace bev2d;
+using namespace pcl;
 using namespace std;
 
 
@@ -35,6 +36,27 @@ void bev2d::writeBGM(const string& kSavePath, const RMatrixXui8& kMat)
     for (size_t i = 0; i < kMat.size(); i++)
         ofs << static_cast<uint8_t>(v[i]);
     ofs.close();
+}
+
+void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>& kCloud)
+{
+    // Open the file.
+    ofstream pcdf(kPcdSavePath);
+    if (!pcdf.good())
+    {
+        cerr << "Cannot open or create PCD binary file: " << kPcdSavePath << endl;
+        exit(EXIT_FAILURE);
+    }
+    
+    for (auto p_it = kCloud.begin(); p_it != kCloud.end(); ++p_it)
+    {
+        auto p = *p_it;
+        pcdf << static_cast<float>(p.x);
+        pcdf << static_cast<float>(p.y);
+        pcdf << static_cast<float>(p.z);
+        pcdf << static_cast<float>(p.intensity);
+    }
+    pcdf.close();
 }
 
 void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
@@ -71,7 +93,8 @@ void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<Velod
         cout << "Progressing scan '" << cdata.name() << "'.\r";
 
         // Write the PCD to disk.
-        pcl::io::savePCDFileASCII((kSavePath / cdata.name()).string() + ".pcd", *(cdata.scan()));
+        // pcl::io::savePCDFileASCII((kSavePath / cdata.name()).string() + ".pcd", *(cdata.scan()));
+        bev2d::writePCDbin((kSavePath / cdata.name()).string() + ".bin", *(cdata.scan()));
         
         tf_x = cdata.xytheta().x;
         tf_y = cdata.xytheta().y;
