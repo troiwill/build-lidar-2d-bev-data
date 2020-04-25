@@ -151,7 +151,7 @@ int main(int argc, char** argv)
 {
     // Parse the command line arguments.
     string basedir, savedir;
-    float xlen = 0.f, ylen = 0.f, radius = 0.f, res = 0.f;
+    float res = 0.f;
     int seqid = 0, numScansToAgg = 0, numThreads = 1;
     bool useInten = false;
 
@@ -163,9 +163,6 @@ int main(int argc, char** argv)
         ("seqid", boostpo::value<int>(&seqid)->required(), "The Kitti sequence ID (e.g., 09).")
         ("nscans", boostpo::value<int>(&numScansToAgg)->required(), "Number of scans to aggregate.")
         ("res", boostpo::value<float>(&res)->required(), "The resolution of BEV images (in meters).")
-        ("xlen", boostpo::value<float>(&xlen), "'x' length of online scan (in meters).")
-        ("ylen", boostpo::value<float>(&ylen), "'y' length of online scan (in meters).")
-        ("radius", boostpo::value<float>(&radius), "'radius' length of online scan from center (in meters).")
         ("useInten", boostpo::bool_switch(&useInten), "Use intensity values from LiDAR.")
         ;
 
@@ -197,19 +194,6 @@ int main(int argc, char** argv)
     if (useInten)
         cout << "* Using LiDAR intensity values.\n";
 
-    float scanLenX = 0.f, scanLenY = 0.f;
-    if (radius > 0.f)
-    {
-        scanLenX = scanLenY = 2. * radius;
-        cout << "* Using radius value:     " << radius;
-    }
-    else
-    {
-        scanLenX = 2. * xlen;
-        scanLenY = 2. * ylen;
-        cout << "* Using x,y half lengths: (xlen = " << xlen
-                  << ", ylen = " << ylen << ")";
-    }
     cout << "\n\n";
     
     // Extract the appropriate Kitti sequence.
