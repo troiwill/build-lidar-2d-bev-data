@@ -48,9 +48,9 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
 
     for (size_t veloId = kSeq.start(), i = 1; veloId <= kSeq.end(); veloId++, i++)
     {
-        string veloname = KittiSequence_t::to_string(veloId);    
+        string veloname = KittiSequence_t::to_string(veloId);
         printf("Loading velodyne data... (name: %s) - Progress -> %6.2f%%\r", veloname.c_str(),
-	    static_cast<float>(100.0 * i / kNumScans));
+        static_cast<float>(100.0 * i / kNumScans));
         cout << flush;
 
         VelodyneData_t currd;
@@ -74,18 +74,18 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
         currd.toWorldTf() = toWorldTF;
         currd.xytheta() = TransformXYTheta(toWorldTF(0,3), toWorldTF(1,3), oxts.yaw);
 
-	data.push_back(currd);
+        data.push_back(currd);
     }
     cout << "\nDone!\n\n" << flush;
 }
 
 void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t kNumScansToAgg,
-    const KittiSequence_t& kSeq, const Vector2f& mapMinCoords, vector<VelodyneData_t>& aggVeloData)
+    const KittiSequence_t& kSeq, vector<VelodyneData_t>& aggVeloData)
 {
     // Use threads to aggregate N consecutive point clouds for "each" scan.
     if (kNumScansToAgg > 1)
     {
-	cout << "Aggregating velodyne data to create point clouds. Each cloud contains "
+        cout << "Aggregating velodyne data to create point clouds. Each cloud contains "
              << kNumScansToAgg << " scans.\n" << flush;
         size_t kAggcap = kSeq.getNumScans() - kNumScansToAgg + 1;
         aggVeloData.reserve(kAggcap);
@@ -93,19 +93,19 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
         {
             const VelodyneData_t& ind = kVelodata[j];
             VelodyneData_t outd;
-            
+
             printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%%\r",
                 ind.name().c_str(), static_cast<float>(100.0 * i / kAggcap));
-	    cout << flush;
+            cout << flush;
 
             for (size_t offset = 0; offset < kNumScansToAgg; offset++)
                 *(outd.scan()) += *(kVelodata[j - offset].scan());
-            
+
             outd.name() = ind.name();
             outd.toWorldTf() = ind.toWorldTf();
             outd.xytheta() = ind.xytheta();
 
-	    aggVeloData.push_back(outd);
+            aggVeloData.push_back(outd);
         }
     }
     else
@@ -113,14 +113,7 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
         cout << "Moving the data." << flush;
         aggVeloData = move(kVelodata);
     }
-    cout << "\nDone!\n\nShifting scan coords using map min coords: (x = " << mapMinCoords[0]
-         << ", y = " << mapMinCoords[1] << ")..." << flush;
-    for (auto data_it = aggVeloData.begin(); data_it != aggVeloData.end(); ++data_it)
-    {
-        data_it->xytheta().x -= mapMinCoords[0];
-        data_it->xytheta().y -= mapMinCoords[1];
-    }
-    cout << "Done!\n";
+    cout << "\nDone!\n\n";
 }
 
 void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRes,
@@ -137,7 +130,7 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
         map += *(vd->scan());
         printf("Building drive map ... Progress -> %6.2f%%\r",
             static_cast<float>(100.0 * vdi / nData));
-	cout << flush;
+        cout << flush;
     }
     cout << "\nAggregation complete!\n" << flush;
 
@@ -146,7 +139,7 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
     PointCloudDim2D cloud2dInfo = PointCloudDim2D::getMinMaxData2D(map);
     mapMinCoords = cloud2dInfo.getCloudMinPt();
     translateDataXY(map, mapMinCoords);
-    
+
     cout << "Done!\nSaving 2D BEV LiDAR-based map..." << flush;
     auto mapbev = buildBEVFromCloud(map, cloud2dInfo.getCloudLenX(),
         cloud2dInfo.getCloudLenY(), kRes, useInten);
@@ -204,9 +197,8 @@ int main(int argc, char** argv)
     cout << "* Num scans to aggregate: " << numScansToAgg << endl;
     if (useInten)
         cout << "* Using LiDAR intensity values.\n";
-
     cout << "\n\n";
-    
+
     // Extract the appropriate Kitti sequence.
     const KittiSequence_t& kSeq = KittiSequence_t::getSeqInfo(seqid);
     cout << "Processing sequence: " << kSeq.id() << " (raw data = " << kSeq.name() << ")\n";
@@ -215,14 +207,14 @@ int main(int argc, char** argv)
     string kittiDate = kSeq.name().substr(0, 10);
     boostfs::path drivepath(basepath / kittiDate / kSeq.name());
     boostfs::path seqSavePath(savePath / kSeq.id());
-        
+
     // Create the save path directory if necessary.
     if (!boostfs::exists(seqSavePath) && !boostfs::create_directories(seqSavePath))
     {
         cerr << "Could not create path: " << seqSavePath.string() << endl;
         exit(EXIT_FAILURE);
     }
-    
+
     // Load the velodyne data.
     vector<VelodyneData_t> velodata;
     loadVelodyneData(drivepath, kSeq, velodata);
@@ -234,11 +226,11 @@ int main(int argc, char** argv)
 
     // Aggregate the Velodyne data if necessary.
     vector<VelodyneData_t> aggVeloData;
-    aggregateVelodyneData(velodata, numScansToAgg, kSeq, mapMinCoords, aggVeloData);
+    aggregateVelodyneData(velodata, numScansToAgg, kSeq, aggVeloData);
     velodata.clear();
 
     // Write the (aggregated) Velodyne data to disk.
-    writeVelodyneData(seqSavePath, aggVeloData, imgSize[0], imgSize[1], res);
+    writeVelodyneData(seqSavePath, aggVeloData, imgSize[0], imgSize[1], mapMinCoords, res);
     cout << "\nSequence " << kSeq.id() << " is complete!\n" << flush;
 
     exit(EXIT_SUCCESS);

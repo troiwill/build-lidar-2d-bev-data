@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <Eigen/Core>
 #include <fstream>
 #include <pcl/io/pcd_io.h>
 #include <string>
@@ -21,7 +22,7 @@ void bev2d::writeBGM(const string& kSavePath, const RMatrixXui8& kMat)
     // Sanity checks.
     assert(!kSavePath.empty());
     assert(kMat.rows() > 0 && kMat.cols() > 0);
-    
+
     // Open an output binary stream.
     ofstream ofs(kSavePath);
     if (!ofs.good())
@@ -47,7 +48,7 @@ void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>&
         cerr << "Cannot open or create PCD binary file: " << kPcdSavePath << endl;
         exit(EXIT_FAILURE);
     }
-    
+
     float x, y, z, inten;
     for (auto p_it = kCloud.begin(); p_it != kCloud.end(); ++p_it)
     {
@@ -56,8 +57,8 @@ void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>&
         y = static_cast<float>(p.y);
         z = static_cast<float>(p.z);
         inten = static_cast<float>(p.intensity);
-        
-	pcdf.write((char*)&x, sizeof(float));
+
+        pcdf.write((char*)&x, sizeof(float));
         pcdf.write((char*)&y, sizeof(float));
         pcdf.write((char*)&z, sizeof(float));
         pcdf.write((char*)&inten, sizeof(float));
@@ -66,7 +67,8 @@ void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>&
 }
 
 void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
-    const uint32_t kMapImgHeight, const uint32_t kMapImgWidth, const float kRes)
+    const uint32_t kMapImgHeight, const uint32_t kMapImgWidth,
+    const Eigen::Vector2f& kMapMinCoords, const float kRes)
 {
     // Sanity check.
     assert(kData.size() > 0);
@@ -86,13 +88,14 @@ void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<Velod
     float accDistance = 0.f, delDistance = 0.f;
     float prev_tf_x = kData[0].xytheta().x, prev_tf_y = kData[0].xytheta().y;
     float tf_x = 0.f, tf_y = 0.f;
-    const int kBufferSize = 150;
+    const float kMapMin_x = kMapMinCoords[0], kMapMin_y = kMapMinCoords[1];
+    const int kBufferSize = 250;
     char infostr[kBufferSize];
 
-    snprintf(infostr, kBufferSize, "%10s, %6s, %6s, %10s, %6s, %12s, %12s\n",
-             "scanId", "cpy", "cpx", "yaw", "res", "delta_dist", "acc_dist");
+    snprintf(infostr, kBufferSize, "%10s, %6s, %6s, %10s, %10s, %10s, %6s, %12s, %12s\n",
+        "scanId", "pxr", "pxc", "scx", "scy", "yaw", "res", "delta_dist", "acc_dist");
     infofile << infostr;
-    
+
     for (auto data_it = kData.cbegin(); data_it != kData.cend(); ++data_it)
     {
         const VelodyneData_t& cdata = *data_it;
@@ -101,23 +104,24 @@ void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<Velod
         // Write the PCD to disk.
         // pcl::io::savePCDFileASCII((kSavePath / cdata.name()).string() + ".pcd", *(cdata.scan()));
         bev2d::writePCDbin((kSavePath / cdata.name()).string() + ".bin", *(cdata.scan()));
-        
+
+        // Compute the pixel location of this scan within the map.
         tf_x = cdata.xytheta().x;
         tf_y = cdata.xytheta().y;
 
-        // Compute the pixel location of this scan within the map.
-        auto scanPxLoc = computePixelLoc(kMapImgHeight, kMapImgWidth, tf_x, tf_y, kRes);
-        
+        auto pxLoc = computePixelLoc(kMapImgHeight, kMapImgWidth, tf_x - kMapMin_x,
+            tf_y - kMapMin_y, kRes);
+
         // Compute delta distance (between this scan and the previous) and accumulated distance.
         delDistance = eucddist(prev_tf_x, prev_tf_y, tf_x, tf_y);
         accDistance += delDistance;
-        
+
         // Write info to disk.
-        snprintf(infostr, kBufferSize, "%10s, %6i, %6i, %10f, %6.3f, %12f, %12f\n",
-                 cdata.name().c_str(), scanPxLoc[0], scanPxLoc[1], cdata.xytheta().yaw, kRes,
+        snprintf(infostr, kBufferSize, "%10s, %6i, %6i, %10f, %10f, %10f, %6.3f, %12f, %12f\n",
+                 cdata.name().c_str(), pxLoc[0], pxLoc[1], tf_x, tf_y, cdata.xytheta().yaw, kRes,
                  delDistance, accDistance);
         infofile << infostr;
-        
+
         prev_tf_x = tf_x;
         prev_tf_y = tf_y;
     }

@@ -19,7 +19,7 @@ namespace kitti_bev
 {
     struct KittiOxts_t;
     struct KittiSequence_t;
-    
+
     const double kPi = 3.14159265359;
 
     Eigen::Matrix4f computePoseFromOxts(const KittiOxts_t& oxts, const float scale);

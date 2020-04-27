@@ -32,10 +32,11 @@ namespace bev2d
     void writePCDbin(const string& kPcdSavePath, const pcl::PointCloud<pcl::PointXYZI>& kCloud);
 
     void writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
-        const uint32_t kMapImgHeight, const uint32_t kMapImgWidth, const float kRes);
+        const uint32_t kMapImgHeight, const uint32_t kMapImgWidth,
+        const Eigen::Vector2f& kMapMinCoords, const float kRes);
 
     inline
-    array<uint32_t, 2> computePixelLoc(uint32_t imgHeight, uint32_t imgWidth, float x, float y, 
+    array<uint32_t, 2> computePixelLoc(uint32_t imgHeight, uint32_t imgWidth, float x, float y,
         float res)
     {
         assert(imgHeight > 0 && imgWidth > 0);
@@ -68,7 +69,7 @@ namespace bev2d
         // Compute the image size.
         auto imgHeight = static_cast<int>(ceil(kXdiff / outRes));
         auto imgWidth = static_cast<int>(ceil(kYdiff / outRes));
-        
+
         // Create the bird's eye matrix (image) and iteratively fill the matrix.
         RMatrixXui8 bev = RMatrixXui8::Zero(imgHeight, imgWidth);
         for (std::size_t i = 0; i < kCloud.size(); i++)
