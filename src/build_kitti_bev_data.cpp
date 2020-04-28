@@ -95,7 +95,7 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
             VelodyneData_t outd;
 
             printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%%\r",
-                ind.name().c_str(), static_cast<float>(100.0 * i / kAggcap));
+                ind.name().c_str(), static_cast<float>(100.0 * (i + 1) / kAggcap));
             cout << flush;
 
             for (size_t offset = 0; offset < kNumScansToAgg; offset++)
