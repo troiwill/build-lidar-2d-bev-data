@@ -31,9 +31,7 @@ namespace bev2d
 
     void writePCDbin(const string& kPcdSavePath, const pcl::PointCloud<pcl::PointXYZI>& kCloud);
 
-    void writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
-        const uint32_t kMapImgHeight, const uint32_t kMapImgWidth,
-        const Eigen::Vector2f& kMapMinCoords, const float kRes);
+    void writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData);
 
     inline
     array<uint32_t, 2> computePixelLoc(uint32_t imgHeight, uint32_t imgWidth, float x, float y,

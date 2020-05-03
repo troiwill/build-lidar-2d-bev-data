@@ -116,9 +116,7 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
     cout << "\nDone!\n\n";
 }
 
-void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRes,
-    const bool useInten, const boostfs::path& seqSavePath, Vector2f& mapMinCoords,
-    array<uint32_t, 2>& imgSize)
+void generateSequenceMap(const vector<VelodyneData_t>& kData, const boostfs::path& seqSavePath)
 {
     cout << "Aggregating point clouds to create map.\n" << flush;
     size_t vdi = 1;
@@ -132,32 +130,16 @@ void generateSequenceBevMap(const vector<VelodyneData_t>& kData, const float kRe
             static_cast<float>(100.0 * vdi / nData));
         cout << flush;
     }
-    cout << "\nAggregation complete!\n" << flush;
-
-    // Shift the aggregated point cloud such that the minimum (x,y) is (0,0).
-    cout << "Shifting cloud and origin data..." << flush;
-    PointCloudDim2D cloud2dInfo = PointCloudDim2D::getMinMaxData2D(map);
-    mapMinCoords = cloud2dInfo.getCloudMinPt();
-    translateDataXY(map, mapMinCoords);
-
-    cout << "Done!\nSaving 2D BEV LiDAR-based map..." << flush;
-    auto mapbev = buildBEVFromCloud(map, cloud2dInfo.getCloudLenX(),
-        cloud2dInfo.getCloudLenY(), kRes, useInten);
-    writeBGM((seqSavePath / "map.pgm").string(), mapbev);
-    cout << "Done!\nSave path: " << seqSavePath.string() << endl << endl << flush;
-
-    // Set the image size (height, width).
-    imgSize[0] = mapbev.rows();
-    imgSize[1] = mapbev.cols();
+    cout << "\nAggregation complete!\nWriting the map point cloud to disk..." << flush;
+    writePCDbin((seqSavePath / "map.bin").string(), map);
+    cout << "Done!\n\n" << flush;
 }
 
 int main(int argc, char** argv)
 {
     // Parse the command line arguments.
     string basedir, savedir;
-    float res = 0.f;
     int seqid = 0, numScansToAgg = 0, numThreads = 1;
-    bool useInten = false;
 
     boostpo::options_description desc("Build Kitti 2D BEV Data Program Options");
     desc.add_options()
@@ -166,8 +148,6 @@ int main(int argc, char** argv)
         ("savedir", boostpo::value<string>(&savedir)->required(), "Output directory for Kitti learning data.")
         ("seqid", boostpo::value<int>(&seqid)->required(), "The Kitti sequence ID (e.g., 09).")
         ("nscans", boostpo::value<int>(&numScansToAgg)->required(), "Number of scans to aggregate.")
-        ("res", boostpo::value<float>(&res)->required(), "The resolution of BEV images (in meters).")
-        ("useInten", boostpo::bool_switch(&useInten), "Use intensity values from LiDAR.")
         ;
 
     boostpo::variables_map vm;
@@ -192,12 +172,8 @@ int main(int argc, char** argv)
     cout << "* Sequence ID:            " << seqid << endl;
     cout << "* Base directory:         " << basedir << endl;
     cout << "* Save directory:         " << savedir << endl;
-    cout << "* LiDAR BEV resolution:   " << res << " meters\n";
     numScansToAgg = max(numScansToAgg, 1);
-    cout << "* Num scans to aggregate: " << numScansToAgg << endl;
-    if (useInten)
-        cout << "* Using LiDAR intensity values.\n";
-    cout << "\n\n";
+    cout << "* Num scans to aggregate: " << numScansToAgg << "\n\n\n";
 
     // Extract the appropriate Kitti sequence.
     const KittiSequence_t& kSeq = KittiSequence_t::getSeqInfo(seqid);
@@ -220,9 +196,7 @@ int main(int argc, char** argv)
     loadVelodyneData(drivepath, kSeq, velodata);
 
     // Aggregate all Velodyne scans into a map and write the map to disk.
-    Vector2f mapMinCoords;
-    array<uint32_t,2> imgSize;
-    generateSequenceBevMap(velodata, res, useInten, seqSavePath, mapMinCoords, imgSize);
+    generateSequenceMap(velodata, seqSavePath);
 
     // Aggregate the Velodyne data if necessary.
     vector<VelodyneData_t> aggVeloData;
@@ -230,8 +204,8 @@ int main(int argc, char** argv)
     velodata.clear();
 
     // Write the (aggregated) Velodyne data to disk.
-    writeVelodyneData(seqSavePath, aggVeloData, imgSize[0], imgSize[1], mapMinCoords, res);
-    cout << "\nSequence " << kSeq.id() << " is complete!\n" << flush;
+    writeVelodyneData(seqSavePath, aggVeloData);
+    cout << "\nSequence " << kSeq.id() << " is complete!\n\n";
 
     exit(EXIT_SUCCESS);
 }

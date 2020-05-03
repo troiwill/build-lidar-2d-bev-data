@@ -66,14 +66,10 @@ void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>&
     pcdf.close();
 }
 
-void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData,
-    const uint32_t kMapImgHeight, const uint32_t kMapImgWidth,
-    const Eigen::Vector2f& kMapMinCoords, const float kRes)
+void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData)
 {
     // Sanity check.
     assert(kData.size() > 0);
-    assert(kMapImgWidth > 0 && kMapImgHeight > 0);
-    assert(kRes > 0.f);
 
     // Open the file.
     string infofilename((kSavePath / "info.txt").string());
@@ -88,12 +84,11 @@ void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<Velod
     float accDistance = 0.f, delDistance = 0.f;
     float prev_tf_x = kData[0].xytheta().x, prev_tf_y = kData[0].xytheta().y;
     float tf_x = 0.f, tf_y = 0.f;
-    const float kMapMin_x = kMapMinCoords[0], kMapMin_y = kMapMinCoords[1];
     const int kBufferSize = 250;
     char infostr[kBufferSize];
 
-    snprintf(infostr, kBufferSize, "%10s, %6s, %6s, %10s, %10s, %10s, %6s, %12s, %12s\n",
-        "scanId", "pxr", "pxc", "scx", "scy", "yaw", "res", "delta_dist", "acc_dist");
+    snprintf(infostr, kBufferSize, "%10s, %10s, %10s, %10s, %12s, %12s\n",
+        "scanId", "scx", "scy", "yaw", "delta_dist", "acc_dist");
     infofile << infostr;
 
     for (auto data_it = kData.cbegin(); data_it != kData.cend(); ++data_it)
@@ -102,24 +97,19 @@ void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<Velod
         cout << "Progressing scan '" << cdata.name() << "'.\r";
 
         // Write the PCD to disk.
-        // pcl::io::savePCDFileASCII((kSavePath / cdata.name()).string() + ".pcd", *(cdata.scan()));
         bev2d::writePCDbin((kSavePath / cdata.name()).string() + ".bin", *(cdata.scan()));
 
         // Compute the pixel location of this scan within the map.
         tf_x = cdata.xytheta().x;
         tf_y = cdata.xytheta().y;
 
-        auto pxLoc = computePixelLoc(kMapImgHeight, kMapImgWidth, tf_x - kMapMin_x,
-            tf_y - kMapMin_y, kRes);
-
         // Compute delta distance (between this scan and the previous) and accumulated distance.
         delDistance = eucddist(prev_tf_x, prev_tf_y, tf_x, tf_y);
         accDistance += delDistance;
 
         // Write info to disk.
-        snprintf(infostr, kBufferSize, "%10s, %6i, %6i, %10f, %10f, %10f, %6.3f, %12f, %12f\n",
-                 cdata.name().c_str(), pxLoc[0], pxLoc[1], tf_x, tf_y, cdata.xytheta().yaw, kRes,
-                 delDistance, accDistance);
+        snprintf(infostr, kBufferSize, "%10s, %10f, %10f, %10f, %12f, %12f\n",
+            cdata.name().c_str(), tf_x, tf_y, cdata.xytheta().yaw, delDistance, accDistance);
         infofile << infostr;
 
         prev_tf_x = tf_x;
