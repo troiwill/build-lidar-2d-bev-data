@@ -49,21 +49,39 @@ void bev2d::writePCDbin(const string& kPcdSavePath, const PointCloud<PointXYZI>&
         exit(EXIT_FAILURE);
     }
 
-    float x, y, z, inten;
     for (auto p_it = kCloud.begin(); p_it != kCloud.end(); ++p_it)
-    {
-        auto p = *p_it;
-        x = static_cast<float>(p.x);
-        y = static_cast<float>(p.y);
-        z = static_cast<float>(p.z);
-        inten = static_cast<float>(p.intensity);
+        writeBinToStream(pcdf, *p_it);
+    pcdf.close();
+}
 
-        pcdf.write((char*)&x, sizeof(float));
-        pcdf.write((char*)&y, sizeof(float));
-        pcdf.write((char*)&z, sizeof(float));
-        pcdf.write((char*)&inten, sizeof(float));
+void bev2d::writePCDbin(const string& kPcdSavePath, const vector<VelodyneData_t>& kData)
+{
+    // Open the file.
+    fstream pcdf(kPcdSavePath, ios::out | ios::binary);
+    if (!pcdf.good())
+    {
+        cerr << "Cannot open or create PCD binary file: " << kPcdSavePath << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (auto d_it = kData.cbegin(); d_it != kData.cend(); ++d_it)
+    {
+        const PointCloud<PointXYZI>& kCloud = *(d_it->scan());
+        for (auto p_it = kCloud.begin(); p_it != kCloud.end(); ++p_it)
+            writeBinToStream(pcdf, *p_it);
     }
     pcdf.close();
+}
+
+inline
+void bev2d::writeBinToStream(fstream& os, const PointXYZI& kPoint)
+{
+    float x = kPoint.x, y = kPoint.y, z = kPoint.z, intensity = kPoint.intensity;
+
+    os.write((char*)&x, sizeof(float));
+    os.write((char*)&y, sizeof(float));
+    os.write((char*)&z, sizeof(float));
+    os.write((char*)&intensity, sizeof(float));
 }
 
 void bev2d::writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData)

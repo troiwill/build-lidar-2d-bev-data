@@ -29,7 +29,10 @@ namespace bev2d
 
     void writeBGM(const string& kSavePath, const RMatrixXui8& kMat);
 
+    void writePCDbin(const string& kPcdSavePath, const vector<VelodyneData_t>& kData);
     void writePCDbin(const string& kPcdSavePath, const pcl::PointCloud<pcl::PointXYZI>& kCloud);
+
+    inline void writeBinToStream(fstream& os, const pcl::PointXYZI& kPoint);
 
     void writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData);
 
