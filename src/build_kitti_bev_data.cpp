@@ -36,18 +36,18 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
     vector<VelodyneData_t>& data)
 {
     cout << "Loading Velodyne data for sequence " << kSeq.id() << endl;
+
     // Get the transformation matrix going from Velodyne coordinates to IMU.
     const Eigen::Matrix4f kVeloToImuTF = kSeq.getVeloToImuTransform();
     cout << "Velodyne to IMU transform:\n" << kVeloToImuTF << endl << endl;
 
     // Read in the OXTS data for the first scan in the sequence.
-    cout << "Loading the first scan in sequence\n";
     string firstScanName(KittiSequence_t::to_string(kSeq.start()) + ".txt");
     KittiOxts_t oxts = readOxtsData((kDrivepath / "oxts" / "data" / firstScanName).string());
     const float kScale = cos(oxts.lat * kPi / 180.0f);
     const Eigen::Vector3f kOrigin = (computePoseFromOxts(oxts, kScale)
         * kVeloToImuTF).block<3,1>(0,3);
-    cout << "\nOrigin is:\n" << kOrigin << endl << endl;
+    cout << "\nMap Origin in world (earth) coordinates:\n" << kOrigin << endl << endl;
 
     // Launch threads to load the Velodyne data into memory.
     size_t kNumScans = kSeq.getNumScans();
@@ -88,41 +88,95 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
     cout << "\nDone!\n\n" << flush;
 }
 
-void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t kNumScansToAgg,
-    const KittiSequence_t& kSeq, vector<VelodyneData_t>& aggVeloData)
+void writeVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t kNumScansToAgg,
+    const KittiSequence_t& kSeq, const boostfs::path& kSavePath)
 {
-    // Use threads to aggregate N consecutive point clouds for "each" scan.
+    // Sanity checks.
+    assert(kVelodata.size() > 0);
+    assert(kNumScansToAgg >= 1);
+    
     if (kNumScansToAgg > 1)
     {
-        cout << "Aggregating velodyne data to create point clouds. Each cloud contains "
-             << kNumScansToAgg << " scans.\n" << flush;
-        size_t kAggcap = kSeq.getNumScans() - kNumScansToAgg + 1;
-        aggVeloData.reserve(kAggcap);
-        for (size_t i = 0, j = kNumScansToAgg - 1; i < kAggcap; i++, j++)
-        {
-            const VelodyneData_t& ind = kVelodata[j];
-            VelodyneData_t outd;
-
-            printf("Aggregating velodyne data ... (name: %s) - Progress -> %6.2f%%\r",
-                ind.name().c_str(), static_cast<float>(100.0 * (i + 1) / kAggcap));
-            cout << flush;
-
-            for (size_t offset = 0; offset < kNumScansToAgg; offset++)
-                *(outd.scan()) += *(kVelodata[j - offset].scan());
-
-            outd.name() = ind.name();
-            outd.toWorldTf() = ind.toWorldTf();
-            outd.xytheta() = ind.xytheta();
-
-            aggVeloData.push_back(outd);
-        }
+        cout << "Aggregating and writing velodyne data to disk. Each cloud has "
+             << kNumScansToAgg << " scans.\n";
     }
     else
     {
-        cout << "Moving the data." << flush;
-        aggVeloData = move(kVelodata);
+        cout << "Simply writing velodyne data to disk.\n";
     }
-    cout << "\nDone!\n\n";
+
+    // Write the information to the file.
+    size_t dataIdx = kNumScansToAgg - 1;
+    float accDistance = 0.f;
+    float delDistance = 0.f;
+
+    float prev_tf_x = kVelodata[dataIdx].xytheta().x;
+    float prev_tf_y = kVelodata[dataIdx].xytheta().y;
+
+    float tf_x = 0.f;
+    float tf_y = 0.f;
+
+    const int kBufferSize = 250;
+    char infostr[kBufferSize];
+
+    // Open the file.
+    string infofilename((kSavePath / "info.txt").string());
+    ofstream infofile(infofilename);
+    if (!infofile.good())
+    {
+        cerr << "Cannot open or create info file: " << infofilename << endl;
+        exit(EXIT_FAILURE);
+    }
+    snprintf(infostr, kBufferSize, "%10s, %10s, %10s, %10s, %12s, %12s\n",
+        "scanId", "scx", "scy", "yaw", "delta_dist", "acc_dist");
+    infofile << infostr;
+
+    // Iteratively create the point clouds (if necessary) and write their data to disk.
+    const size_t kAggcap = kSeq.getNumScans() - kNumScansToAgg + 1;
+    for (size_t i = 1; dataIdx < kSeq.getNumScans(); i++, dataIdx++)
+    {
+        // Extract the current velodyne data and create the write path for the point cloud.
+        const VelodyneData_t& kCdata = kVelodata[dataIdx];
+        const string kWritePath((kSavePath / kCdata.name()).string() + ".bin");
+
+        printf("Processing data for %s: Progress -> %6.2f%%\r",
+            kCdata.name().c_str(), static_cast<float>(100.0 * i / kAggcap));
+        cout << flush;
+
+        // Aggregate the point clouds if necessary.
+        if (kNumScansToAgg > 1)
+        {
+            PointCloud<PointXYZI> cloudToWrite;
+            for (size_t offset = 0; offset < kNumScansToAgg; offset++)
+                cloudToWrite += *(kVelodata[dataIdx - offset].scan());
+            
+            // Write the cloud to disk.
+            writePCDbin(kWritePath, cloudToWrite);
+        }
+        else
+        {
+            // Write the single cloud to disk.
+            writePCDbin(kWritePath, *(kCdata.scan()));
+        }
+
+        // Compute the pixel location of this scan within the map.
+        tf_x = kCdata.xytheta().x;
+        tf_y = kCdata.xytheta().y;
+
+        // Compute delta distance (between this scan and the previous) and accumulated distance.
+        delDistance = eucddist(prev_tf_x, prev_tf_y, tf_x, tf_y);
+        accDistance += delDistance;
+
+        // Write info to disk.
+        snprintf(infostr, kBufferSize, "%10s, %10f, %10f, %10f, %12f, %12f\n",
+            kCdata.name().c_str(), tf_x, tf_y, kCdata.xytheta().yaw, delDistance, accDistance);
+        infofile << infostr;
+
+        prev_tf_x = tf_x;
+        prev_tf_y = tf_y;
+    }
+    infofile.close();
+    cout << "\nDone!\n";
 }
 
 int main(int argc, char** argv)
@@ -163,12 +217,12 @@ int main(int argc, char** argv)
     cout << "* Base directory:         " << basedir << endl;
     cout << "* Save directory:         " << savedir << endl;
     numScansToAgg = max(numScansToAgg, 1);
-    cout << "* Num scans to aggregate: " << numScansToAgg << "\n\n\n";
+    cout << "* Num scans to aggregate: " << numScansToAgg << "\n\n";
 
     // Extract the appropriate Kitti sequence.
     const KittiSequence_t& kSeq = KittiSequence_t::getSeqInfo(seqid);
     cout << "Processing sequence: " << kSeq.id() << " (raw data = " << kSeq.name() << ")\n";
-    cout << "Sequence should have " << kSeq.getNumScans() << " scans.\n";
+    cout << "Sequence should have " << kSeq.getNumScans() << " scans.\n\n";
 
     string kittiDate = kSeq.name().substr(0, 10);
     boostfs::path drivepath(basepath / kittiDate / kSeq.name());
@@ -186,19 +240,13 @@ int main(int argc, char** argv)
     loadVelodyneData(drivepath, kSeq, velodata);
 
     // Aggregate all Velodyne scans into a map and write the map to disk.
-    // generateSequenceMap(velodata, seqSavePath);
     cout << "Writing the map point cloud to disk..." << flush;
     writePCDbin((seqSavePath / "map.bin").string(), velodata);
     cout << "Done!\n\n" << flush;
 
-    // Aggregate the Velodyne data if necessary.
-    vector<VelodyneData_t> aggVeloData;
-    aggregateVelodyneData(velodata, numScansToAgg, kSeq, aggVeloData);
-    velodata.clear();
+    // Aggregate and write the Velodyne data to disk.
+    writeVelodyneData(velodata, numScansToAgg, kSeq, seqSavePath);
 
-    // Write the (aggregated) Velodyne data to disk.
-    writeVelodyneData(seqSavePath, aggVeloData);
     cout << "\nSequence " << kSeq.id() << " is complete!\n\n";
-
     exit(EXIT_SUCCESS);
 }

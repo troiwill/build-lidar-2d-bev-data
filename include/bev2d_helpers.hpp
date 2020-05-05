@@ -34,8 +34,6 @@ namespace bev2d
 
     inline void writeBinToStream(fstream& os, const pcl::PointXYZI& kPoint);
 
-    void writeVelodyneData(const boostfs::path& kSavePath, const vector<VelodyneData_t>& kData);
-
     inline
     array<uint32_t, 2> computePixelLoc(uint32_t imgHeight, uint32_t imgWidth, float x, float y,
         float res)
