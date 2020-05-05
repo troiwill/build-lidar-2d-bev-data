@@ -14,6 +14,6 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
 set(KITTI_SOURCES build_kitti_bev_data.cpp kitti_helpers.cpp bev2d_helpers.cpp)
-set(KITTI_LINK_LIBS ${Boost_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS} Eigen3::Eigen)
+set(KITTI_LINK_LIBS ${Boost_LIBRARIES} ${PCL_LIBRARIES} Eigen3::Eigen)
 add_executable(build_kitti_bev_data ${KITTI_SOURCES})
 target_link_libraries(build_kitti_bev_data ${KITTI_LINK_LIBS})
