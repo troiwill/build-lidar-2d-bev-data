@@ -35,12 +35,19 @@ using namespace std;
 void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kSeq,
     vector<VelodyneData_t>& data)
 {
+    cout << "Loading Velodyne data for sequence " << kSeq.id() << endl;
+    // Get the transformation matrix going from Velodyne coordinates to IMU.
+    const Eigen::Matrix4f kVeloToImuTF = kSeq.getVeloToImuTransform();
+    cout << "Velodyne to IMU transform:\n" << kVeloToImuTF << endl << endl;
+
     // Read in the OXTS data for the first scan in the sequence.
-    cout << "\nLoading the first scan in sequence " << kSeq.id() << endl << flush;
+    cout << "Loading the first scan in sequence\n";
     string firstScanName(KittiSequence_t::to_string(kSeq.start()) + ".txt");
     KittiOxts_t oxts = readOxtsData((kDrivepath / "oxts" / "data" / firstScanName).string());
     const float kScale = cos(oxts.lat * kPi / 180.0f);
-    const Eigen::Vector3f kOrigin = computePoseFromOxts(oxts, kScale).block<3,1>(0,3);
+    const Eigen::Vector3f kOrigin = (computePoseFromOxts(oxts, kScale)
+        * kVeloToImuTF).block<3,1>(0,3);
+    cout << "\nOrigin is:\n" << kOrigin << endl << endl;
 
     // Launch threads to load the Velodyne data into memory.
     size_t kNumScans = kSeq.getNumScans();
@@ -64,7 +71,9 @@ void loadVelodyneData(const boostfs::path& kDrivepath, const KittiSequence_t& kS
         // Read in the vehicle ground truth pose file.
         string oxtsfile = (kDrivepath / "oxts" / "data" / (veloname + ".txt")).string();
         oxts = readOxtsData(oxtsfile);
-        Eigen::Matrix4f toWorldTF = computePoseFromOxts(oxts, kScale);
+
+        // Compute velodyne to world transformation matrix.
+        Eigen::Matrix4f toWorldTF = computePoseFromOxts(oxts, kScale) * kVeloToImuTF;
         toWorldTF.block<3,1>(0,3) -= kOrigin;
 
         // Transform the point cloud.
@@ -114,25 +123,6 @@ void aggregateVelodyneData(const vector<VelodyneData_t>& kVelodata, const size_t
         aggVeloData = move(kVelodata);
     }
     cout << "\nDone!\n\n";
-}
-
-void generateSequenceMap(const vector<VelodyneData_t>& kData, const boostfs::path& seqSavePath)
-{
-    cout << "Aggregating point clouds to create map.\n" << flush;
-    size_t vdi = 1;
-    const size_t nData = kData.size();
-    PointCloud<PointXYZI> map;
-    map.points.reserve(nData);
-    for (auto vd = kData.cbegin(); vd != kData.cend(); ++vd, ++vdi)
-    {
-        map += *(vd->scan());
-        printf("Building drive map ... Progress -> %6.2f%%\r",
-            static_cast<float>(100.0 * vdi / nData));
-        cout << flush;
-    }
-    cout << "\nAggregation complete!\nWriting the map point cloud to disk..." << flush;
-    writePCDbin((seqSavePath / "map.bin").string(), map);
-    cout << "Done!\n\n" << flush;
 }
 
 int main(int argc, char** argv)
@@ -196,7 +186,10 @@ int main(int argc, char** argv)
     loadVelodyneData(drivepath, kSeq, velodata);
 
     // Aggregate all Velodyne scans into a map and write the map to disk.
-    generateSequenceMap(velodata, seqSavePath);
+    // generateSequenceMap(velodata, seqSavePath);
+    cout << "Writing the map point cloud to disk..." << flush;
+    writePCDbin((seqSavePath / "map.bin").string(), velodata);
+    cout << "Done!\n\n" << flush;
 
     // Aggregate the Velodyne data if necessary.
     vector<VelodyneData_t> aggVeloData;
