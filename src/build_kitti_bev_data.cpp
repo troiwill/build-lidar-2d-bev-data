@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/range/iterator_range.hpp>

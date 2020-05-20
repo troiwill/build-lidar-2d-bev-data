@@ -17,3 +17,8 @@ set(KITTI_SOURCES build_kitti_bev_data.cpp kitti_helpers.cpp bev2d_helpers.cpp)
 set(KITTI_LINK_LIBS ${Boost_LIBRARIES} ${PCL_LIBRARIES} Eigen3::Eigen)
 add_executable(build_kitti_bev_data ${KITTI_SOURCES})
 target_link_libraries(build_kitti_bev_data ${KITTI_LINK_LIBS})
+
+set(GEN_KITTI_DATA_SRCS generate_learn_data.cpp kitti_helpers.cpp)
+set(GEN_KITTI_DATA_LINK_LIBS ${Boost_LIBRARIES} ${PCL_LIBRARIES} Eigen3::Eigen)
+add_executable(generate_learn_data ${GEN_KITTI_DATA_SRCS})
+target_link_libraries(generate_learn_data ${GEN_KITTI_DATA_LINK_LIBS})
