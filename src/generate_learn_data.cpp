@@ -209,7 +209,7 @@ void generateBevSample(const octree::OctreePointCloudSearch<PointXYZI>& kSearchT
         const GeneratorParams kParam(paramQ.front());
         paramQ.pop();
         ++nDone;
-        printf("Progress: % 7d / % 7d (% 6.2f%%).\r", nDone, kQueueLen,
+        printf("Progress: % 7d / % 7d (% 6.2f%%)\r", nDone, kQueueLen,
             (static_cast<float>(nDone) * 100.0f / kQueueLen));
         cout << flush;
         thdmtx.unlock();
@@ -417,14 +417,14 @@ int main(int argc, char** argv)
         // Create and launch the threads.
         int nDone = 0;
         const int kQueueLen = paramQ.size();
-        cout << "\nCreating threads..." << flush;
+        cout << "\nCreating threads...\n" << flush;
         thread* thds = new thread[nworkers];
         for (size_t thdIdx = 0; thdIdx < nworkers; thdIdx++)
         {
             thds[thdIdx] = thread(generateBevSample, ref(searchTree), ref(paramQ), ref(nDone),
                 kQueueLen, ref(seqpath), ref(savePath), bevRes, static_cast<float>(scanLen));
         }
-        cout << " Generated " << nworkers << " threads.\n" << flush;
+        cout << "\nGenerated " << nworkers << " threads.\n" << flush;
 
         for (size_t thdi = 0; thdi < nworkers; thdi++) thds[thdi].join();
         cout << "\nGeneration completed!\n" << flush;
