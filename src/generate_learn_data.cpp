@@ -417,14 +417,13 @@ int main(int argc, char** argv)
         // Create and launch the threads.
         int nDone = 0;
         const int kQueueLen = paramQ.size();
-        cout << "\nCreating threads...\n" << flush;
+        cout << "\nCreating " << nworkers << " threads to generate data.\n" << flush;
         thread* thds = new thread[nworkers];
         for (size_t thdIdx = 0; thdIdx < nworkers; thdIdx++)
         {
             thds[thdIdx] = thread(generateBevSample, ref(searchTree), ref(paramQ), ref(nDone),
                 kQueueLen, ref(seqpath), ref(savePath), bevRes, static_cast<float>(scanLen));
         }
-        cout << "\nGenerated " << nworkers << " threads.\n" << flush;
 
         for (size_t thdi = 0; thdi < nworkers; thdi++) thds[thdi].join();
         cout << "\nGeneration completed!\n" << flush;
